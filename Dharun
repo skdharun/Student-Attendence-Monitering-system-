@@ -1,0 +1,402 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+// Structure for attendance record
+typedef struct AttendanceRecord {
+    int studentID;
+    char date[11]; // DD/MM/YYYY format
+    char status;   // 'P' for Present, 'A' for Absent
+    struct AttendanceRecord* next;
+} AttendanceRecord;
+
+// Function prototypes
+AttendanceRecord* createRecord(int id, const char* date, char status);
+AttendanceRecord* addRecord(AttendanceRecord* head, int id, const char* date, char status);
+AttendanceRecord* deleteRecord(AttendanceRecord* head, int id, const char* date);
+void searchAttendance(AttendanceRecord* head, int id, const char* date);
+void displayAttendanceByDate(AttendanceRecord* head, const char* date);
+void displayAllAttendance(AttendanceRecord* head);
+void reverseDisplay(AttendanceRecord* head);
+AttendanceRecord* cloneList(AttendanceRecord* head);
+void freeList(AttendanceRecord* head);
+int validateDate(const char* date);
+int validateStatus(char status);
+void displayMenu();
+
+int main() {
+    AttendanceRecord* head = NULL;
+    AttendanceRecord* adminCopy = NULL;
+    int choice, studentID;
+    char date[11], status;
+    
+    printf("=== STUDENT ATTENDANCE MONITORING SYSTEM ===\n");
+    
+    do {
+        displayMenu();
+        printf("Enter your choice (1-8): ");
+        scanf("%d", &choice);
+        
+        switch(choice) {
+            case 1:
+                // Add attendance record
+                printf("\n--- ADD ATTENDANCE RECORD ---\n");
+                printf("Enter Student ID: ");
+                scanf("%d", &studentID);
+                printf("Enter Date (DD/MM/YYYY): ");
+                scanf("%s", date);
+                printf("Enter Status (P for Present/A for Absent): ");
+                scanf(" %c", &status);
+                
+                if (!validateDate(date)) {
+                    printf("Error: Invalid date format! Use DD/MM/YYYY.\n");
+                    break;
+                }
+                
+                if (!validateStatus(status)) {
+                    printf("Error: Invalid status! Use 'P' for Present or 'A' for Absent.\n");
+                    break;
+                }
+                
+                head = addRecord(head, studentID, date, status);
+                printf("Attendance record added successfully!\n");
+                break;
+                
+            case 2:
+                // Delete attendance record
+                printf("\n--- DELETE ATTENDANCE RECORD ---\n");
+                printf("Enter Student ID to delete: ");
+                scanf("%d", &studentID);
+                printf("Enter Date (DD/MM/YYYY): ");
+                scanf("%s", date);
+                
+                if (!validateDate(date)) {
+                    printf("Error: Invalid date format! Use DD/MM/YYYY.\n");
+                    break;
+                }
+                
+                head = deleteRecord(head, studentID, date);
+                break;
+                
+            case 3:
+                // Search attendance
+                printf("\n--- SEARCH ATTENDANCE ---\n");
+                printf("Enter Student ID to search: ");
+                scanf("%d", &studentID);
+                printf("Enter Date (DD/MM/YYYY): ");
+                scanf("%s", date);
+                
+                if (!validateDate(date)) {
+                    printf("Error: Invalid date format! Use DD/MM/YYYY.\n");
+                    break;
+                }
+                
+                searchAttendance(head, studentID, date);
+                break;
+                
+            case 4:
+                // Display attendance by date
+                printf("\n--- DISPLAY ATTENDANCE BY DATE ---\n");
+                printf("Enter Date (DD/MM/YYYY): ");
+                scanf("%s", date);
+                
+                if (!validateDate(date)) {
+                    printf("Error: Invalid date format! Use DD/MM/YYYY.\n");
+                    break;
+                }
+                
+                displayAttendanceByDate(head, date);
+                break;
+                
+            case 5:
+                // Display all attendance
+                printf("\n--- DISPLAY ALL ATTENDANCE RECORDS ---\n");
+                displayAllAttendance(head);
+                break;
+                
+            case 6:
+                // Reverse display
+                printf("\n--- REVERSE DISPLAY OF ATTENDANCE ---\n");
+                reverseDisplay(head);
+                break;
+                
+            case 7:
+                // Clone for admin reviews
+                printf("\n--- CLONE FOR ADMIN REVIEWS ---\n");
+                if (adminCopy != NULL) {
+                    freeList(adminCopy);
+                }
+                adminCopy = cloneList(head);
+                if (adminCopy != NULL) {
+                    printf("Admin copy created successfully!\n");
+                    printf("Admin Copy Contents:\n");
+                    displayAllAttendance(adminCopy);
+                }
+                break;
+                
+            case 8:
+                // Exit
+                printf("\nThank you for using Student Attendance Monitoring System!\n");
+                break;
+                
+            default:
+                printf("Invalid choice! Please try again.\n");
+        }
+        
+        if (choice != 8) {
+            printf("\nPress Enter to continue...");
+            getchar(); // Clear buffer
+            getchar(); // Wait for Enter
+        }
+        
+    } while (choice != 8);
+    
+    // Free memory before exiting
+    freeList(head);
+    freeList(adminCopy);
+    
+    return 0;
+}
+
+// Create a new attendance record
+AttendanceRecord* createRecord(int id, const char* date, char status) {
+    AttendanceRecord* newRecord = (AttendanceRecord*)malloc(sizeof(AttendanceRecord));
+    if (newRecord == NULL) {
+        printf("Memory allocation failed!\n");
+        return NULL;
+    }
+    
+    newRecord->studentID = id;
+    strcpy(newRecord->date, date);
+    newRecord->status = status;
+    newRecord->next = NULL;
+    
+    return newRecord;
+}
+
+// Add a new record to the linked list
+AttendanceRecord* addRecord(AttendanceRecord* head, int id, const char* date, char status) {
+    AttendanceRecord* newRecord = createRecord(id, date, status);
+    
+    if (newRecord == NULL) {
+        return head;
+    }
+    
+    // Check if record already exists
+    AttendanceRecord* current = head;
+    while (current != NULL) {
+        if (current->studentID == id && strcmp(current->date, date) == 0) {
+            printf("Error: Attendance record for Student ID %d on date %s already exists!\n", id, date);
+            free(newRecord);
+            return head;
+        }
+        current = current->next;
+    }
+    
+    // Add at the beginning for O(1) insertion
+    newRecord->next = head;
+    return newRecord;
+}
+
+// Delete a record from the linked list
+AttendanceRecord* deleteRecord(AttendanceRecord* head, int id, const char* date) {
+    if (head == NULL) {
+        printf("No records found to delete!\n");
+        return NULL;
+    }
+    
+    AttendanceRecord* current = head;
+    AttendanceRecord* prev = NULL;
+    
+    // Check if the record to delete is the first node
+    if (current->studentID == id && strcmp(current->date, date) == 0) {
+        head = current->next;
+        printf("Record deleted: Student ID %d, Date %s\n", id, date);
+        free(current);
+        return head;
+    }
+    
+    // Search for the record to delete
+    while (current != NULL) {
+        if (current->studentID == id && strcmp(current->date, date) == 0) {
+            prev->next = current->next;
+            printf("Record deleted: Student ID %d, Date %s\n", id, date);
+            free(current);
+            return head;
+        }
+        prev = current;
+        current = current->next;
+    }
+    
+    printf("Record not found: Student ID %d, Date %s\n", id, date);
+    return head;
+}
+
+// Search for attendance by student ID and date
+void searchAttendance(AttendanceRecord* head, int id, const char* date) {
+    AttendanceRecord* current = head;
+    int found = 0;
+    
+    while (current != NULL) {
+        if (current->studentID == id && strcmp(current->date, date) == 0) {
+            printf("Record Found:\n");
+            printf("Student ID: %d\n", current->studentID);
+            printf("Date: %s\n", current->date);
+            printf("Status: %s\n", (current->status == 'P') ? "Present" : "Absent");
+            found = 1;
+            break;
+        }
+        current = current->next;
+    }
+    
+    if (!found) {
+        printf("No record found for Student ID %d on date %s\n", id, date);
+    }
+}
+
+// Display attendance records for a specific date
+void displayAttendanceByDate(AttendanceRecord* head, const char* date) {
+    AttendanceRecord* current = head;
+    int found = 0;
+    
+    printf("\nAttendance for Date: %s\n", date);
+    printf("+------------+------------+----------+\n");
+    printf("| Student ID |    Date    |  Status  |\n");
+    printf("+------------+------------+----------+\n");
+    
+    while (current != NULL) {
+        if (strcmp(current->date, date) == 0) {
+            printf("| %-10d | %-10s | %-8s |\n", 
+                   current->studentID, 
+                   current->date, 
+                   (current->status == 'P') ? "Present" : "Absent");
+            found = 1;
+        }
+        current = current->next;
+    }
+    
+    printf("+------------+------------+----------+\n");
+    
+    if (!found) {
+        printf("No attendance records found for date %s\n", date);
+    }
+}
+
+// Display all attendance records
+void displayAllAttendance(AttendanceRecord* head) {
+    if (head == NULL) {
+        printf("No attendance records found!\n");
+        return;
+    }
+    
+    AttendanceRecord* current = head;
+    
+    printf("+------------+------------+----------+\n");
+    printf("| Student ID |    Date    |  Status  |\n");
+    printf("+------------+------------+----------+\n");
+    
+    while (current != NULL) {
+        printf("| %-10d | %-10s | %-8s |\n", 
+               current->studentID, 
+               current->date, 
+               (current->status == 'P') ? "Present" : "Absent");
+        current = current->next;
+    }
+    
+    printf("+------------+------------+----------+\n");
+}
+
+// Reverse display using recursion
+void reverseDisplay(AttendanceRecord* head) {
+    if (head == NULL) {
+        return;
+    }
+    
+    // Recursive call to reach the end
+    reverseDisplay(head->next);
+    
+    // Print current node after recursion returns (reverse order)
+    printf("| %-10d | %-10s | %-8s |\n", 
+           head->studentID, 
+           head->date, 
+           (head->status == 'P') ? "Present" : "Absent");
+}
+
+// Clone the linked list for admin reviews
+AttendanceRecord* cloneList(AttendanceRecord* head) {
+    if (head == NULL) {
+        printf("No records to clone!\n");
+        return NULL;
+    }
+    
+    AttendanceRecord* newHead = NULL;
+    AttendanceRecord* current = head;
+    AttendanceRecord* tail = NULL;
+    
+    while (current != NULL) {
+        AttendanceRecord* newNode = createRecord(current->studentID, current->date, current->status);
+        
+        if (newNode == NULL) {
+            printf("Error creating clone!\n");
+            freeList(newHead);
+            return NULL;
+        }
+        
+        if (newHead == NULL) {
+            newHead = newNode;
+            tail = newNode;
+        } else {
+            tail->next = newNode;
+            tail = newNode;
+        }
+        
+        current = current->next;
+    }
+    
+    return newHead;
+}
+
+// Free the entire linked list
+void freeList(AttendanceRecord* head) {
+    AttendanceRecord* current = head;
+    AttendanceRecord* next;
+    
+    while (current != NULL) {
+        next = current->next;
+        free(current);
+        current = next;
+    }
+}
+
+// Validate date format (DD/MM/YYYY)
+int validateDate(const char* date) {
+    if (strlen(date) != 10) return 0;
+    if (date[2] != '/' || date[5] != '/') return 0;
+    
+    for (int i = 0; i < 10; i++) {
+        if (i == 2 || i == 5) continue;
+        if (!isdigit(date[i])) return 0;
+    }
+    
+    return 1;
+}
+
+// Validate status input
+int validateStatus(char status) {
+    status = toupper(status);
+    return (status == 'P' || status == 'A');
+}
+
+// Display menu options
+void displayMenu() {
+    printf("\n=== MAIN MENU ===\n");
+    printf("1. Add Attendance Record\n");
+    printf("2. Delete Attendance Record\n");
+    printf("3. Search Attendance by Student ID and Date\n");
+    printf("4. Display Attendance List for a Date\n");
+    printf("5. Display All Attendance Records\n");
+    printf("6. Reverse Display of Attendance\n");
+    printf("7. Clone for Admin Reviews\n");
+    printf("8. Exit\n");
+}
