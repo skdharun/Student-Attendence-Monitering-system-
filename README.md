@@ -1,2 +1,2 @@
-# Student-Attendence-Monitering-system-
+# Smart-Attendence-app
 
